@@ -26,7 +26,7 @@ fn setup_global_subscriber() {
         .ok();
 }
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
     setup_global_subscriber();
     let opt = Opt::from_args();
@@ -45,7 +45,7 @@ async fn main() {
     let perf = Perf::default();
     let mut server = SwarmBuilder::new(transport, perf, local_peer_id.clone())
         .executor(Box::new(|f| {
-            async_std::task::spawn(f);
+            tokio::task::spawn(f);
         }))
         .build();
 
