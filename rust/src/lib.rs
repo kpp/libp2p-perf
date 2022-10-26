@@ -15,7 +15,7 @@ use libp2p::{
     },
     dns, identity, noise,
     plaintext::PlainText2Config,
-    quic::{Config as QuicConfig, QuicTransport},
+    quic::{Config as QuicConfig, GenTransport},
     tcp, yamux, PeerId,
 };
 
@@ -160,8 +160,8 @@ pub fn build_transport(
     };
 
     let quic_transport = {
-        let config = QuicConfig::new(&keypair).unwrap();
-        QuicTransport::new(config)
+        let config = QuicConfig::new(&keypair);
+        GenTransport::<libp2p::quic::async_std::Provider>::new(config)
     };
 
     Ok(OrTransport::new(quic_transport, tcp_transport)
