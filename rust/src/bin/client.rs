@@ -51,7 +51,7 @@ async fn main() {
     loop {
         match client.next().await.expect("Infinite stream.") {
             SwarmEvent::Behaviour(e) => {
-                println!("{}", e);
+                println!("{e}");
 
                 if let Some(peer_id) = remote_peer_id.take() {
                     client.disconnect_peer_id(peer_id).unwrap();
