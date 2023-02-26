@@ -154,7 +154,8 @@ pub fn build_transport(
     };
 
     let quic_transport = {
-        let config = QuicConfig::new(&keypair);
+        let mut config = QuicConfig::new(&keypair);
+        config.support_draft_29 = true;
         QuicTransport::new(config)
     };
 
