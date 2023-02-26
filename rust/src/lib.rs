@@ -3,12 +3,12 @@ mod handler;
 mod protocol;
 
 pub use behaviour::{Perf, PerfEvent};
+use futures::future::Either;
 use futures::executor::block_on;
 
 use libp2p::{
     core::{
         self,
-        either::EitherOutput,
         muxing::StreamMuxerBox,
         transport::{choice::OrTransport, Transport},
         upgrade::{InboundUpgradeExt, OptionalUpgrade, OutboundUpgradeExt, SelectUpgrade},
@@ -41,7 +41,7 @@ impl std::str::FromStr for TcpTransportSecurity {
 
 impl std::fmt::Display for TcpTransportSecurity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -146,28 +146,23 @@ pub fn build_transport(
             .upgrade(core::upgrade::Version::V1Lazy)
             .authenticate(
                 tcp_transport_security_config
-                    .map_inbound(move |result| match result {
-                        EitherOutput::First((peer_id, o)) => (peer_id, EitherOutput::First(o)),
-                        EitherOutput::Second((peer_id, o)) => (peer_id, EitherOutput::Second(o)),
-                    })
-                    .map_outbound(move |result| match result {
-                        EitherOutput::First((peer_id, o)) => (peer_id, EitherOutput::First(o)),
-                        EitherOutput::Second((peer_id, o)) => (peer_id, EitherOutput::Second(o)),
-                    }),
+                    .map_inbound(move |result| result.factor_first())
+                    .map_outbound(move |result| result.factor_first()),
             )
             .multiplex(yamux_config)
             .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
     };
 
     let quic_transport = {
-        let config = QuicConfig::new(&keypair);
+        let mut config = QuicConfig::new(&keypair);
+        config.support_draft_29 = true;
         QuicTransport::new(config)
     };
 
     Ok(OrTransport::new(quic_transport, tcp_transport)
         .map(|either_output, _| match either_output {
-            EitherOutput::First((peer_id, muxer)) => (peer_id, StreamMuxerBox::new(muxer)),
-            EitherOutput::Second((peer_id, muxer)) => (peer_id, StreamMuxerBox::new(muxer)),
+            Either::Left((peer_id, muxer)) => (peer_id, StreamMuxerBox::new(muxer)),
+            Either::Right((peer_id, muxer)) => (peer_id, StreamMuxerBox::new(muxer)),
         })
         .boxed())
 }
